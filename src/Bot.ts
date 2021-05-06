@@ -58,7 +58,7 @@ export class Bot extends EventEmitter {
         const files = readdirSync(`${__dirname}/commands`).filter(f => f.endsWith(".ts"));
 
         for(const file of files){
-            const cmd: Command = require(`${__dirname}/commands/${file}`);
+            const cmd: Command = require(`${__dirname}/commands/${file}`).default;
             this.commands.set(cmd.name, cmd);
         }
     }
