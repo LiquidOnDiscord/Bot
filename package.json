@@ -10,7 +10,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "start:dev": "nodemon --ext ts-node src/index.ts --",
+    "watch": "nodemon -e ts -w ./src -x npm run watch:serve",
+    "watch:serve": "ts-node src/index.ts",
     "start": "node build/index.js"
   },
   "dependencies": {
