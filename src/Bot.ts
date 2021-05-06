@@ -1,6 +1,7 @@
-import { Client, Collection, Message } from "discord.js";
+import { Client, Collection } from "discord.js";
 import BotOptions from "./@types/BotOptions";
 import Command from "./@types/Command";
+import Event from "./@types/Event";
 import { readdirSync } from "fs";
 import { EventEmitter } from "events";
 
@@ -13,7 +14,7 @@ export class Bot extends EventEmitter {
     private token: string;
     public debug: boolean;
     public prefix: string;
-    private commands: Collection<string, Command>;
+    public commands: Collection<string, Command>;
 
     constructor(options: BotOptions){
         super();
@@ -24,40 +25,30 @@ export class Bot extends EventEmitter {
         this.init();
     }
 
-    private init(): void {
-        this.client.login(this.token).then(() => {
-            this.client.on("ready", () => {
-                this.loadCommands();
-                this.listener();
-                this.emit("ready");
-            });
-        });
+    public init(): void {
+        this.client.login(this.token);
     }
 
-    private listener(): void {
-        this.client.on("message", (message: Message) => {
-            if(!message.content.startsWith(this.prefix) || message.author.bot) return;
+    public loadEvents(): void {
+        const files = readdirSync(`${__dirname}/events`).filter(f => f.endsWith(".ts"));
 
-            const args: string[] = message.content.slice(this.prefix.length).trim().split(/ +/);
-            const command: string = args.shift().toLowerCase();
-            
-            if(!this.commands.has(command)) return;
-
-            try {
-                const cmd: Command = this.commands.get(command);
-                cmd.run(this.client, message, args);
-            }catch(err){
-                message.channel.send("There was an error executing that command!");
-                throw new Error(err);
+        for(const file of files){
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const event: Event = require(`${__dirname}/events/${file}`).default;
+            if(event.once){
+                this.client.once(event.name, (...args) => event.run(this, this.client, ...args));
+            }else {
+                this.client.on(event.name, (...args) => event.run(this, this.client, ...args));
             }
-        });
+        }
     }
 
-    private loadCommands(): void {
+    public loadCommands(): void {
         this.commands = new Collection();
         const files = readdirSync(`${__dirname}/commands`).filter(f => f.endsWith(".ts"));
 
         for(const file of files){
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
             const cmd: Command = require(`${__dirname}/commands/${file}`).default;
             this.commands.set(cmd.name, cmd);
         }
